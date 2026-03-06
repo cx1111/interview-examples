@@ -1,7 +1,8 @@
 # Run with fastapi dev main.py
+from dataclasses import dataclass
 from typing import Iterator
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
 
 app = FastAPI()
@@ -49,14 +50,51 @@ def file_iterator(file_path: str) -> Iterator[bytes]:
     # Unlike __next__ which just returns one iteration.
     with open(file_path, "rb") as f:
         while data := f.read(BLOCK_SIZE):
-            # data = f.read(BLOCK_SIZE)
             yield data
 
 
 @app.get("/bigfile-stream")
 async def bigfile_stream():
+    # The good solution for streaming content to the client.
     fi = file_iterator("bigfile.txt")
     return StreamingResponse(content=fi, media_type="text/plain")
+
+
+@dataclass
+class User:
+    user_id: int
+    email: str
+
+
+def get_user(user_id: int) -> User:
+    # Fake DB query
+    return User(user_id=user_id, email=f"user-{user_id}@gmail.com")
+
+
+def get_users(user_ids: list[int]) -> list[User]:
+    # Fake batch DB query
+    return [
+        User(user_id=user_id, email=f"user-{user_id}@gmail.com") for user_id in user_ids
+    ]
+
+
+@app.get("/stream-user-csv")
+async def stream_user_csv():
+    yield "user_id,email"
+
+    # This is a huge table with 20k users
+    # Getting one row at a time - many queries
+    for user_id in range(10):
+        user = get_user(user_id=user_id)
+        yield f"{user.user_id},{user.email}"
+
+    # Getting 100 rows at a time in batched queries
+
+
+@app.post("/endless-upload")
+async def endless_upload(request: Request):
+    async for chunk in request.stream():
+        print(chunk)
 
 
 # TODO with websocket

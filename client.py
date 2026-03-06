@@ -1,3 +1,6 @@
+import time
+from typing import Iterator
+
 import requests
 
 
@@ -21,3 +24,21 @@ with requests.get(f"http://{SERVER_URL}/bigfile-stream", stream=True) as respons
 with requests.get(f"http://{SERVER_URL}/bigfile-stream", stream=False) as response:
     d = response.content
     print(d)
+
+
+with requests.get(f"http://{SERVER_URL}/stream-user-csv", stream=False) as response:
+    d = response.content
+    print(d)
+
+
+def endless_data() -> Iterator[bytes]:
+    print("Uploading endless data")
+    i = 0
+    while True:
+        yield f"chunk-{i}\n".encode()
+        i += 1
+        time.sleep(1)
+
+
+# Endless upload stream
+requests.post("http://localhost:8000/endless-upload", data=endless_data())
