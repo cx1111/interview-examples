@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import Iterator
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import FileResponse, StreamingResponse
 
 app = FastAPI()
@@ -93,11 +93,20 @@ async def stream_user_csv():
 
 @app.post("/endless-upload")
 async def endless_upload(request: Request):
+    """
+    HTTP request
+    + chunked transfer encoding
+    + open TCP connection
+    + chunks sent forever
+    """
     async for chunk in request.stream():
-        print(chunk)
+        # Realistically would stream write to disk or something.
+        print("Received chunk", chunk)
 
 
-# TODO with websocket
-# @app.get("/chat")
-# async def chat():
-#     return {"message": "Hello World"}
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Message text was: {data}")
